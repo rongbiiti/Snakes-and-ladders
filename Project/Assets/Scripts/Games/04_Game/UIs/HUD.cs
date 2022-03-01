@@ -8,23 +8,49 @@ using UnityEngine.UI;
 [Serializable]
 public class UserInfo
 {
-    [Header("プレイヤーがいるマス目表示用Text")]
-    [SerializeField] private Text m_SquareNumText = null;
+    /// <summary>
+    /// そのプレイヤーのターンの時表示する枠
+    /// </summary>
+    [Header("そのプレイヤーのターンの時表示する枠")]
+    [SerializeField] private Image m_TurnBorderImage;
 
     /// <summary>
     /// プレイヤーがいるマス目
     /// </summary>
     private int m_SquareNum = 0;
-    public int PairNum => m_SquareNum;
+    public int SquareNum => m_SquareNum;
 
     /// <summary>
-    /// プレイヤーがいるマス目をTextに表示する
+    /// プレイヤーマスX軸
     /// </summary>
-    /// <param name="SquareNum">追加する数値</param>
-    public void SetSquareNumText(int SquareNum)
+    private int m_SquareX = 0;
+    
+
+    /// <summary>
+    /// プレイヤーマスY軸
+    /// </summary>
+    private int m_SquareY = 0;
+
+    /// <summary>
+    /// プレイヤーがいるマス目を元にコマをボード上に表示
+    /// </summary>
+    /// <param name="SquareNum">マス目</param>
+    public void SetPieceSquarePos(int SquareNum)
     {
-        m_SquareNum += SquareNum;
-        m_SquareNumText.text = m_SquareNum.ToString();
+        m_SquareNum = SquareNum;
+
+        m_SquareY = GameData.Height - (m_SquareNum - 1) / GameData.Width;
+
+        // Yが偶数なら...
+        if(m_SquareY % 2 == 0)
+        {
+            m_SquareX = 10 % (GameData.Height - 10 % m_SquareNum);
+        }
+        // Yが奇数なら...
+        else
+        {
+            m_SquareX = 10 % m_SquareNum - 1;
+        }
     }
 }
 

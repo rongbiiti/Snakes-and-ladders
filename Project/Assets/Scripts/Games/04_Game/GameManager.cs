@@ -57,6 +57,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [Header("ボード画像表示用UI")]
     [SerializeField] private BoardImage m_BoardImage = default;
 
+    [Header("プレイヤーのコマ")]
+    [SerializeField] private Piece[] m_Pieces = default;
+
     [Header("HUD")]
     [SerializeField] private HUD m_HUD = null;
 
@@ -268,50 +271,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
     #region Snaeks and laddersのロジック
 
-
-
-    ///// <summary>
-    ///// トランプを選択する(自身)
-    ///// </summary>
-    ///// <param name="trump">トランプ</param>
-    ///// <returns></returns>
-    //private IEnumerator CoSelectTrump(Trump trump)
-    //{
-
-
-
-    //    // トランプデータを送信
-    //    yield return CoSendGameData();
-
-
-    //}
-
-    ///// <summary>
-    ///// トランプを選択する(対戦相手の操作同期)
-    ///// </summary>
-    ///// <param name="trump">トランプ</param>
-    ///// <returns></returns>
-    //private IEnumerator CoSelectTrumpSync(Trump trump)
-    //{
-    //    // 1. トランプを選択する。
-    //    AudioManager.I.PlaySe(AudioKey.TurningOverCardSE);
-
-    //    // 2. 選択したトランプを表面に裏返す
-    //    // 3. 選択したトランプが2枚なら...
-
-
-    //    // 5. ゲーム終了していたらゲーム結果を表示
-    //    // それ以外は状態を選択状態に戻す
-    //    if (CheckGameEnd())
-    //    {
-    //        yield return CoResult();
-    //    }
-    //}
-
-
-
-
-
     /// <summary>
     /// ターンを変更する
     /// </summary>
@@ -427,18 +386,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
             // 
 
-            // 選択したセル番号リストに変化があれば、更新（同期）する。
-            //if (GameInfo.Game.SelectTrumpList.Count > m_SelectTrumpList.Count)
-            //{
-            //    for (int i = m_SelectTrumpList.Count; i < GameInfo.Game.SelectTrumpList.Count; i++)
-            //    {
-            //        int index = GameInfo.Game.SelectTrumpList[i];
-            //        int indexH = index / GameData.Width;
-            //        int indexW = index % GameData.Width;
-            //        yield return CoSelectTrumpSync(m_CellArray[indexH, indexW]);
-            //        m_SelectTrumpList.Add(index);
-            //    }
-            //}
+            
             yield break;
         }
 
@@ -459,7 +407,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_GameDataSync.StopGameSync();
 
         // プレイヤーの勝利
-        if (m_HUD.Users[0].PairNum > m_HUD.Users[1].PairNum)
+        if (m_HUD.Users[0].SquareNum > m_HUD.Users[1].SquareNum)
         {
             yield return m_ResultUI.CoWin();
         }
