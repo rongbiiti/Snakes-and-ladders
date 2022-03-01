@@ -1,0 +1,17 @@
+﻿☆ 注意点
+
+1. SingltonMonoBehaviour.csを使用しているため被りがある可能性があります。
+   その際はこのプロジェクトのSingltonMonoBehaviour.csを削除してください。
+2. 現在のAudioManager.csではシーンを跨いで音を再生する事が出来ないようになっています。
+　 必要に応じて、DontDestroyOnLoad()メソッドを使用してシーンをまたいでも破棄されないようにしてください。
+3. Fontも被りがあると思うので、このプロジェクトFontを削除し再度設定お願いします。
+
+☆ 新たに音を追加する際の手順
+
+1. AudioKeyクラスに新たにstring型のKeyを追加。
+2. AudioManagerクラスのm_BgmKey or m_SeKeyに追加したKeyを登録。
+3. エディタ上でBgmFile or SeFileに音データを追加する。
+
+☆使用方法
+
+1. AudioSystem/PrefabsフォルダのCanvasとAudioManagerをゲームシーンに置く。
