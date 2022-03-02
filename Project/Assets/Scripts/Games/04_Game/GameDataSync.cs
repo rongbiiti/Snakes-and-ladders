@@ -227,31 +227,14 @@ public class GameDataSync : UWRHelper
             {
                 GameData gameData = GameData.FromJsonConvert(JsonNode.GetValue(uwr.downloadHandler.text));
 
-                int counter = 0;
-
-                // トランプデータが設定されたトランプの数を調べる
-                //for (int i = 0; i < GameData.Height; i++)
-                //{
-                //    for (int j = 0; j < GameData.Width; j++)
-                //    {
-                //        if (gameData.CellArray[i, j] != (int)TrumpType.None)
-                //        {
-                //            ++counter;
-                //        }
-                //    }
-                //}
-
-                // 全てのトランプにデータが設定されていたら
-                // データを格納し、処理を抜ける
-                if (counter == GameData.Height * GameData.Width)
+                // ボードデータが選出されていたら
+                // データを格納し処理を抜ける
+                if(gameData.BoardNum != -1)
                 {
                     GameInfo.Game = gameData;
                     break;
                 }
-
                 
-
-                break;
             }
 
             yield return new WaitForSeconds(DefaultSyncSecond);

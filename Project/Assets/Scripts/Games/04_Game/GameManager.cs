@@ -32,24 +32,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [SerializeField] private float m_BoardFadeTime = 1f;
 
     /// <summary>
-    /// トランプの回転する時間（トランプをひっくり返すのに掛かる時間）
+    /// サイコロ
     /// </summary>
-    private const float TrumpRotateTime = 0.5f;
+    [Header("サイコロ")]
+    [SerializeField] private Dice m_Dice;
 
-    /// <summary>
-    /// トランプの移動に掛かる時間
-    /// </summary>
-    private const float TrumpMoveTime = 1f;
-
-    /// <summary>
-    /// 二つの選択したトランプを表示する時間
-    /// </summary>
-    private const float TrumpDisplayTime = 0.5f;
-
-    /// <summary>
-    /// 一つのトランプを配る時間
-    /// </summary>
-    private const float TrumpDealTime = 0.1f;
+    
 
     [Header("ゲームデータ同期")]
     [SerializeField] private GameDataSync m_GameDataSync = null;
@@ -69,9 +57,20 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [Header("オープニング演出用UI")]
     [SerializeField] private OpeningUI m_OpeningUI = default;
 
-    
+    /// <summary>
+    /// ローカルで使うサイコロの出目
+    /// </summary>
+    private int m_DiceNumber = 0;
 
-    
+    /// <summary>
+    /// User1がいるマス
+    /// </summary>
+    private int m_User1Square;
+
+    /// <summary>
+    /// User2がいるマス
+    /// </summary>
+    private int m_User2Square;
 
     /// <summary>
     /// ゲーム状態
@@ -79,14 +78,14 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     private GameState m_GameState = GameState.Init;
 
     /// <summary>
+    /// ローカルで使うターン情報
+    /// </summary>
+    private Turn m_NowTurn = Turn.None;
+
+    /// <summary>
     /// 同期が完了したか識別するFlg
     /// </summary>
     private bool m_SyncCompletedFlg = false;
-
-    /// <summary>
-    /// 選択したトランプの数
-    /// </summary>
-    private int m_SelectTrumpCount = 0;
 
     /// <summary>
     /// Start
@@ -138,6 +137,8 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         {
             m_SyncCompletedFlg = false;
         }
+
+        m_NowTurn = GameInfo.Game.Turn;
     }
 
     #region 通常にゲームを開始
@@ -170,6 +171,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // オープニング演出
         yield return CoOpening();
 
+        // サイコロを表示
+        SetActiveDice();
+
         // ターン表示テキストを設定
         m_HUD.SetTurn(GameInfo.Game.Turn);
 
@@ -178,18 +182,17 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         // 状態をGameプレイ状態に設定
         m_GameState = GameState.Game;
+
     }
 
     /// <summary>
     /// User1の初期化
     /// </summary>
     /// <returns></returns>
-
     private IEnumerator CoInitialize_User1()
     {
         // User1側で盤面を設定し、データを送信する。
-        //SetCellArray();
-        //CreateTrump();
+        SetBoardData();
         yield return m_GameDataSync.CoUpdateGameData(GameInfo.Game);
     }
 
@@ -201,18 +204,24 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     {
         // User1側で設定した盤面データを同期
         yield return m_GameDataSync.CoSetUpDataSync_User2();
-        //CreateTrump();
     }
 
+    /// <summary>
+    /// ボードを抽選
+    /// </summary>
+    private void SetBoardData()
+    {
+        GameInfo.Game.BoardNum = Random.Range(0, m_Boards.Length);
+    }
+
+    /// <summary>
+    /// ボードをフェードイン表示
+    /// </summary>
+    /// <returns></returns>
     private IEnumerator CoFadeDisplayBoard()
     {
-        // ボードをフェードイン表示
         yield return m_BoardImage.CoFadeIn(m_Boards[GameInfo.Game.BoardNum].m_BoardTexture, m_BoardFadeTime);
     }
-
-    
-
-    
 
     /// <summary>
     /// オープニング演出
@@ -241,7 +250,22 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         CheckMyTurn();
 
         // 前回のゲームデータの盤面情報を生成する。
-        //GetCreateCellArray();
+        m_BoardImage.Image.sprite = m_Boards[GameInfo.Game.BoardNum].m_BoardTexture;
+        GetPlayerSquares();
+
+        // サイコロを振れる状態なら…
+        // サイコロを表示
+        if(GameInfo.Game.DiceNumber == 0)
+        {
+            SetActiveDice();
+        }
+
+        // ミッション中なら…
+        // ミッションを表示
+        if(GameInfo.Game.MissionFlg)
+        {
+
+        }
 
         // ターン表示テキストを設定
         m_HUD.SetTurn(GameInfo.Game.Turn);
@@ -263,13 +287,175 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         Debug.Log("前回のデータからゲームを開始しました");
     }
 
-
+    /// <summary>
+    /// 前回のゲームデータからプレイヤーのコマを移動させる
+    /// </summary>
+    private void GetPlayerSquares()
+    {
+        m_User1Square = GameInfo.Game.User1Square;
+        m_User2Square = GameInfo.Game.User2Square;
+        
+        // 自分がUser1
+        if (GameInfo.MyTurn == Turn.User01)
+        {
+            m_Pieces[0].Acquired(m_User1Square);
+            m_Pieces[1].Acquired(m_User2Square);
+        }
+        // 自分がUser2
+        else if (GameInfo.MyTurn == Turn.User02)
+        {
+            m_Pieces[0].Acquired(m_User2Square);
+            m_Pieces[1].Acquired(m_User1Square);
+        }
+    }
 
     #endregion
 
     #endregion
 
     #region Snaeks and laddersのロジック
+
+    /// <summary>
+    /// サイコロを振れるようにする
+    /// </summary>
+    private void SetActiveDice()
+    {
+        m_Dice.gameObject.SetActive(true);
+
+        // 0は、サイコロを振れる状態
+        m_Dice.DiceNumber = 0;
+
+        // 自分のターンだったらサイコロのEventTriggerをアクティブにする
+        if (GameInfo.MyTurn == GameInfo.Game.Turn)
+        {
+            m_Dice.EventTrigger.enabled = true;
+        }
+        else
+        {
+            m_Dice.EventTrigger.enabled = false;
+        }
+
+    }
+
+    /// <summary>
+    /// サイコロがクリックされた
+    /// </summary>
+    public void OnClick_Dice()
+    {
+        if (CheckDiceRoll())
+        {
+            StartCoroutine(CoDiceRoll());
+        }
+    }
+
+    /// <summary>
+    /// サイコロを振る
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoDiceRoll()
+    {
+        m_Dice.EventTrigger.enabled = false;
+
+        m_DiceNumber = 0;
+
+        // デバッグ用
+        // 次に出すサイコロの目を設定した値にする
+        if(GameInfo.ControllDiceNumber != 0)
+        {
+            m_DiceNumber = GameInfo.ControllDiceNumber;
+        }
+        // 普通に抽選
+        else
+        {
+            m_DiceNumber = Random.Range(1, 7);
+        }
+
+        // 送信用データを作成
+        SetSendGameData(m_DiceNumber);
+
+        // ターン変更
+        yield return CoChangeTurn();
+
+        // ゲームデータ送信
+        yield return CoSendGameData();
+
+        // サイコロを振るアニメーション
+        yield return m_Dice.CoDiceRollAnimation(m_DiceNumber);
+
+        // コマを動かす
+        yield return CoPieceMove();
+
+        m_NowTurn = GameInfo.Game.Turn;
+        m_Dice.DiceNumber = 0;
+        m_HUD.SetTurn(GameInfo.Game.Turn);
+        m_SyncCompletedFlg = false;
+
+        SetActiveDice();
+
+        // ゲーム終了チェック
+        if (CheckGameEnd())
+        {
+            yield return CoResult();
+        }
+    }
+
+    /// <summary>
+    /// サイコロの結果を元にコマのマスを更新
+    /// 送信するゲームデータを作成
+    /// </summary>
+    private void SetSendGameData(int diceNumber)
+    {
+        GameInfo.Game.DiceNumber = diceNumber;
+
+        // 自分がUser1
+        if (GameInfo.MyTurn == Turn.User01)
+        {
+            // 値が50を超えないようにする
+            GameInfo.Game.User1Square = Mathf.Clamp(m_User1Square + diceNumber, 1, GameData.Width * GameData.Height);
+        }
+        // 自分がUser2
+        else if (GameInfo.MyTurn == Turn.User02)
+        {
+            // 値が50を超えないようにする
+            GameInfo.Game.User2Square = Mathf.Clamp(m_User2Square + diceNumber, 1, GameData.Width * GameData.Height);
+        }
+    }
+
+    /// <summary>
+    /// サイコロを振る（対戦相手の操作同期）
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoDiceRollSync()
+    {
+        m_Dice.EventTrigger.enabled = false;
+
+        m_DiceNumber = GameInfo.Game.DiceNumber;
+
+        // 相手が使用したサイコロの出目をリセット
+        GameInfo.Game.DiceNumber = 0;
+
+        // 相手にも送る
+        yield return CoSendGameData();
+
+        // サイコロを振るアニメーション
+        yield return m_Dice.CoDiceRollAnimation(m_DiceNumber);
+
+        // コマを動かす
+        yield return CoPieceMove();
+
+        m_NowTurn = GameInfo.Game.Turn;
+        m_Dice.DiceNumber = 0;
+        m_HUD.SetTurn(GameInfo.Game.Turn);
+        m_SyncCompletedFlg = true;
+
+        SetActiveDice();
+
+        // ゲーム終了チェック
+        if (CheckGameEnd())
+        {
+            yield return CoResult();
+        }
+    }
 
     /// <summary>
     /// ターンを変更する
@@ -292,11 +478,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
     /// <summary>
     /// サイコロを振れるか調べる
-    /// Dice.csでも使用している
     /// </summary>
-    /// <param name="dice">サイコロデータ</param>
     /// <returns>TRUE 選択できる FALSE 選択できない</returns>
-    public bool CheckDiceRoll(Dice dice)
+    public bool CheckDiceRoll()
     {
         if (m_GameState == GameState.Init ||
             m_GameState == GameState.Opening)
@@ -305,13 +489,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             return false;
         }
 
-        if (dice.DiceNumber == -1)
+        if (m_Dice.DiceNumber == -1)
         {
             Debug.Log("サイコロクリック無効: サイコロを振れるタイミングでない");
             return false;
         }
 
-        if (dice.DiceNumber > 0)
+        if (m_Dice.DiceNumber > 0)
         {
             Debug.Log("サイコロクリック無効:　既にサイコロを振っている");
             return false;
@@ -325,14 +509,94 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         if(!m_SyncCompletedFlg)
         {
-            Debug.Log("サイコロクリック無効: 全ての同期が完了していません。\n");
+            Debug.Log("サイコロクリック無効: 全ての同期が完了していない");
             return false;
         }
 
         return true;
     }
 
-    
+    /// <summary>
+    /// コマ移動
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoPieceMove()
+    {
+
+        // 自分のターン
+        if (GameInfo.MyTurn == m_NowTurn)
+        {
+            // 自分がUser1
+            if (GameInfo.MyTurn == Turn.User01)
+            {
+                // 一手目だったとき
+                if(m_User1Square == 0)
+                {
+                    Debug.Log("一手目");
+                    yield return m_Pieces[0].CoFirstPieceMove(m_Dice.DiceNumber);
+                }
+                // 二手目以降
+                else
+                {
+                    yield return m_Pieces[0].CoPieceMove(m_User1Square, m_Dice.DiceNumber);
+                    
+                }
+                m_User1Square = GameInfo.Game.User1Square;
+            }
+            // 自分がUser2
+            else if (GameInfo.MyTurn == Turn.User02)
+            {
+                // 一手目だったとき
+                if (m_User2Square == 0)
+                {
+                    Debug.Log("一手目");
+                    yield return m_Pieces[0].CoFirstPieceMove(m_Dice.DiceNumber);
+                }
+                // 二手目以降
+                else
+                {
+                    yield return m_Pieces[0].CoPieceMove(m_User2Square, m_Dice.DiceNumber);
+                }
+                m_User2Square = GameInfo.Game.User2Square;
+            }
+        }
+        // 相手のターン
+        else if (GameInfo.OpponentTurn == m_NowTurn)
+        {
+            // 自分がUser1
+            if (GameInfo.MyTurn == Turn.User01)
+            {
+                // 一手目だったとき
+                if (m_User2Square == 0)
+                {
+                    Debug.Log("一手目");
+                    yield return m_Pieces[1].CoFirstPieceMove(m_Dice.DiceNumber);
+                }
+                // 二手目以降
+                else
+                {
+                    yield return m_Pieces[1].CoPieceMove(m_User2Square, m_Dice.DiceNumber);
+                }
+                m_User2Square = GameInfo.Game.User2Square;
+            }
+            // 自分がUser2
+            else if (GameInfo.MyTurn == Turn.User02)
+            {
+                // 一手目だったとき
+                if (m_User1Square == 0)
+                {
+                    Debug.Log("一手目");
+                    yield return m_Pieces[1].CoFirstPieceMove(m_Dice.DiceNumber);
+                }
+                // 二手目以降
+                else
+                {
+                    yield return m_Pieces[1].CoPieceMove(m_User1Square, m_Dice.DiceNumber);
+                }
+                m_User1Square = GameInfo.Game.User1Square;
+            }
+        }
+    }
 
     /// <summary>
     /// ゲームが終了したか調べる
@@ -352,8 +616,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         return false;
     }
-
-    
 
     #endregion
 
@@ -381,11 +643,16 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 同期が完了していないなら...
         if (!m_SyncCompletedFlg)
         {
-            // ゲームデータを格納
+            // 取得したゲームデータを格納
             GameInfo.Game = gameData;
 
-            // 
-
+            // サイコロを振れる状態のときに、
+            // 取得したゲームデータがサイコロの出目の値になっていたら…
+            if(GameInfo.Game.DiceNumber > 0 && m_Dice.DiceNumber == 0)
+            {
+                Debug.Log("相手がサイコロを振った");
+                yield return CoDiceRollSync();
+            }
             
             yield break;
         }
@@ -407,7 +674,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_GameDataSync.StopGameSync();
 
         // プレイヤーの勝利
-        if (m_HUD.Users[0].SquareNum > m_HUD.Users[1].SquareNum)
+        if (m_Pieces[0].SquareNumber > m_Pieces[1].SquareNumber)
         {
             yield return m_ResultUI.CoWin();
         }

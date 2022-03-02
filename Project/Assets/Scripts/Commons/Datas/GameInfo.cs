@@ -31,6 +31,11 @@ public enum URLType
 public class GameInfo
 {
     /// <summary>
+    /// 値を1～6にしている場合、サイコロを振ったときその値が出る
+    /// </summary>
+    public static int ControllDiceNumber = 0;
+
+    /// <summary>
     /// フレームレート
     /// </summary>
     public const int FrameRate = 60;

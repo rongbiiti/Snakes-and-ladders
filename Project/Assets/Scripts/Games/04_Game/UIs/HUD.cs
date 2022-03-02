@@ -13,45 +13,11 @@ public class UserInfo
     /// </summary>
     [Header("そのプレイヤーのターンの時表示する枠")]
     [SerializeField] private Image m_TurnBorderImage;
-
-    /// <summary>
-    /// プレイヤーがいるマス目
-    /// </summary>
-    private int m_SquareNum = 0;
-    public int SquareNum => m_SquareNum;
-
-    /// <summary>
-    /// プレイヤーマスX軸
-    /// </summary>
-    private int m_SquareX = 0;
-    
-
-    /// <summary>
-    /// プレイヤーマスY軸
-    /// </summary>
-    private int m_SquareY = 0;
-
-    /// <summary>
-    /// プレイヤーがいるマス目を元にコマをボード上に表示
-    /// </summary>
-    /// <param name="SquareNum">マス目</param>
-    public void SetPieceSquarePos(int SquareNum)
-    {
-        m_SquareNum = SquareNum;
-
-        m_SquareY = GameData.Height - (m_SquareNum - 1) / GameData.Width;
-
-        // Yが偶数なら...
-        if(m_SquareY % 2 == 0)
-        {
-            m_SquareX = 10 % (GameData.Height - 10 % m_SquareNum);
-        }
-        // Yが奇数なら...
-        else
-        {
-            m_SquareX = 10 % m_SquareNum - 1;
-        }
+    public Image TurnBorderImage {
+        get => m_TurnBorderImage;
     }
+
+    
 }
 
 
@@ -79,10 +45,14 @@ public class HUD : MonoBehaviour
         if (GameInfo.MyTurn == turn)
         {
             m_MessageImageUI.sprite = m_TurnList[0];
+            m_Users[0].TurnBorderImage.gameObject.SetActive(true);
+            m_Users[1].TurnBorderImage.gameObject.SetActive(false);
         }
         else if (GameInfo.OpponentTurn == turn)
         {
             m_MessageImageUI.sprite = m_TurnList[1];
+            m_Users[0].TurnBorderImage.gameObject.SetActive(false);
+            m_Users[1].TurnBorderImage.gameObject.SetActive(true);
         }
     }
 }

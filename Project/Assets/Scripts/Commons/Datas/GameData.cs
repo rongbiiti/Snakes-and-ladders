@@ -71,7 +71,7 @@ public class GameData
     /// <summary>
     /// ボード番号
     /// </summary>
-    [SerializeField] private int m_BoardNum = 0;
+    [SerializeField] private int m_BoardNum = -1;
     public int BoardNum 
     {
         get => m_BoardNum;
@@ -181,7 +181,7 @@ public class GameData
         gameData.m_UserID_02       = sendGameData.UserID_02;
         gameData.m_BoardNum        = sendGameData.BoardNum;
         gameData.m_MissionFlg      = sendGameData.MissionFlg;
-        gameData.m_MissionNumber      = sendGameData.MissionNumber;
+        gameData.m_MissionNumber   = sendGameData.MissionNumber;
         gameData.m_DiceNumber      = sendGameData.DiceNumber;
         gameData.m_User1Square     = sendGameData.User1Square;
         gameData.m_User2Square     = sendGameData.User2Square;

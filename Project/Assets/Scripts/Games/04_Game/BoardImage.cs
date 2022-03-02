@@ -10,6 +10,7 @@ public class BoardImage : MonoBehaviour
     /// 自身のImageコンポーネント
     /// </summary>
     [SerializeField] private Image m_Image;
+    public Image Image => m_Image;
 
     /// <summary>
     /// ボード画像をフェードイン表示
@@ -21,12 +22,13 @@ public class BoardImage : MonoBehaviour
         m_Image.sprite = sprite;
         m_Image.enabled = true;
         Color col = m_Image.color;
+        m_Image.color = Color.clear;
 
         yield return  DOTween.ToAlpha(
-            () => m_Image.color,
+            () => new Color(1,1,1,0),
             color => m_Image.color = color,
             1f,
             fadeTime
-            );
+            ).WaitForCompletion();
     }
 }

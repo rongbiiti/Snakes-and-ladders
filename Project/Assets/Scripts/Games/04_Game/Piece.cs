@@ -30,6 +30,12 @@ public class Piece : MonoBehaviour
     [SerializeField] private float m_MoveHorizontalTime = 0.5f;
 
     /// <summary>
+    /// 今いるマス
+    /// </summary>
+    private int m_SquareNumber = 0;
+    public int SquareNumber => m_SquareNumber;
+
+    /// <summary>
     /// プレイヤーマスX軸
     /// </summary>
     private int m_SquareX = 0;
@@ -45,10 +51,12 @@ public class Piece : MonoBehaviour
     /// <param name="squareNum"></param>
     public void Acquired(int squareNum)
     {
+        m_SquareNumber = squareNum;
+
         CalcSquareXY(squareNum);
 
         float posX = m_StartPos.x + m_Offset.x * m_SquareX;
-        float posY = m_StartPos.y + m_Offset.y * m_SquareY;
+        float posY = m_StartPos.y + m_Offset.y * (GameData.Height - m_SquareY - 1);
         Vector2 newPos = new Vector2(posX, posY);
 
         transform.localPosition = newPos;
@@ -61,19 +69,22 @@ public class Piece : MonoBehaviour
     public void CalcSquareXY(int squareNum)
     {
         // Y軸
-        int m_SquareY = GameData.Height - (squareNum - 1) / GameData.Width;
+        m_SquareY = (GameData.Height - 1) - (squareNum - 1) / GameData.Width;
+        Debug.Log("Y軸 : " + m_SquareY);
 
         // Yが偶数なら...
         if (m_SquareY % 2 == 0)
         {
-            m_SquareX = 10 % (GameData.Height - 10 % squareNum);
+            m_SquareX = (GameData.Height - (squareNum % 10)) % 10;
+            Debug.Log("Yは偶数でX軸 : " + m_SquareX);
         }
         // Yが奇数なら...
         else
         {
-            m_SquareX = 10 % squareNum - 1;
+            m_SquareX = (squareNum % 10) - 1 ;
+            Debug.Log("Yは奇数でX軸 : " + m_SquareX);
         }
-        
+
     }
 
     /// <summary>
@@ -85,7 +96,7 @@ public class Piece : MonoBehaviour
     private Vector2 CalcBoardPos(int squareX, int squareY)
     {
         float posX = m_StartPos.x + m_Offset.x * squareX;
-        float posY = m_StartPos.y + m_Offset.y * squareY;
+        float posY = m_StartPos.y + m_Offset.y * (GameData.Height - m_SquareY - 1);
         Vector2 newPos = new Vector2(posX, posY);
 
         return newPos;
@@ -101,7 +112,7 @@ public class Piece : MonoBehaviour
         // まずXYのマス目を計算
         CalcSquareXY(squareNum);
 
-        yield return transform.DOLocalMove(CalcBoardPos(m_SquareX, m_SquareY), 0.5f);
+        yield return transform.DOLocalMove(CalcBoardPos(m_SquareX, m_SquareY), 0.5f).WaitForCompletion();
     }
 
     /// <summary>
@@ -119,6 +130,7 @@ public class Piece : MonoBehaviour
         {
             --movePoint;
             --m_SquareY;
+            Debug.Log("1マス上に" + movePoint);
             yield return CoPieceMoveUp();
         }
 
@@ -132,6 +144,7 @@ public class Piece : MonoBehaviour
             // X左へ
             int tmpX = m_SquareX;
             tmpX -= movePoint;
+            movePoint -= Mathf.Abs(m_SquareX - tmpX);
 
             // 左端を超えないようにする
             if (tmpX < 0)
@@ -139,8 +152,10 @@ public class Piece : MonoBehaviour
                 movePoint = Mathf.Abs(tmpX);
                 tmpX = 0;
             }
-
+            Debug.Log("Y偶数なので左へ" + movePoint);
             m_SquareX = tmpX;
+
+            yield return CoPieceMoveHorizontal(m_SquareX, m_SquareY);
         }
         // Yが奇数なら…
         else
@@ -148,21 +163,24 @@ public class Piece : MonoBehaviour
             // X右へ
             int tmpX = m_SquareX;
             tmpX += movePoint;
+            movePoint -= Mathf.Abs(m_SquareX - tmpX);
 
             // 右端を超えないようにする
-            if(GameData.Width < tmpX)
+            if (GameData.Width - 1 < tmpX)
             {
-                movePoint = tmpX - GameData.Width;
-                tmpX = GameData.Width;
+                movePoint = tmpX - (GameData.Width - 1);
+                tmpX = (GameData.Width - 1);
             }
-
+            Debug.Log("Y奇数なので右へ" + movePoint);
             m_SquareX = tmpX;
+            yield return CoPieceMoveHorizontal(m_SquareX, m_SquareY);
         }
 
         // これ以上進めなくなったらbreak
         if (movePoint <= 0) yield break;
 
-        // まだmovePointが余ってたら自分を呼ぶ
+        // まだmovePointが余ってたら †自分を呼ぶ†
+        Debug.Log("Point余ってるので再帰処理" + movePoint);
         yield return CoPieceMove(squareNum, movePoint);
     }
 
@@ -172,7 +190,7 @@ public class Piece : MonoBehaviour
     /// <returns></returns>
     private IEnumerator CoPieceMoveUp()
     {
-        yield return transform.DOLocalMoveY(CalcBoardPos(m_SquareX, m_SquareY).y, m_MoveUpTime);
+        yield return transform.DOLocalMoveY(CalcBoardPos(m_SquareX, m_SquareY).y, m_MoveUpTime).WaitForCompletion();
     }
 
     /// <summary>
@@ -197,7 +215,7 @@ public class Piece : MonoBehaviour
         else
         {
             // X軸が右端かチェック
-            if(squareX == GameData.Width)
+            if(squareX == GameData.Width - 1)
             {
                 return true;
             }
@@ -215,6 +233,6 @@ public class Piece : MonoBehaviour
     /// <returns></returns>
     private IEnumerator CoPieceMoveHorizontal(int moveSquareX, int squareY)
     {
-        yield return transform.DOLocalMoveX(CalcBoardPos(moveSquareX, squareY).x, m_MoveHorizontalTime);
+        yield return transform.DOLocalMoveX(CalcBoardPos(moveSquareX, squareY).x, m_MoveHorizontalTime).WaitForCompletion();
     }
 }
