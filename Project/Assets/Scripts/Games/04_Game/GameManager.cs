@@ -37,7 +37,11 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [Header("サイコロ")]
     [SerializeField] private Dice m_Dice;
 
-    
+    [Header("SnakePopUp")]
+    [SerializeField] private PopUpText m_SnakePopUp;
+
+    [Header("LadderPopUp")]
+    [SerializeField] private PopUpText m_LadderPopUp;
 
     [Header("ゲームデータ同期")]
     [SerializeField] private GameDataSync m_GameDataSync = null;
@@ -71,6 +75,16 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     /// User2がいるマス
     /// </summary>
     private int m_User2Square;
+
+    /// <summary>
+    /// User1がサイコロを振った回数
+    /// </summary>
+    private int m_User1MoveCount;
+
+    /// <summary>
+    /// User2がサイコロを振った回数
+    /// </summary>
+    private int m_User2MoveCount;
 
     /// <summary>
     /// ゲーム状態
@@ -253,11 +267,15 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_BoardImage.Image.sprite = m_Boards[GameInfo.Game.BoardNum].m_BoardTexture;
         GetPlayerSquares();
 
+        // プレイヤーの手数
+        m_User1MoveCount = GameInfo.Game.User1MoveCount;
+        m_User2MoveCount = GameInfo.Game.User2MoveCount;
+
         // サイコロを振れる状態なら…
         // サイコロを表示
         if(GameInfo.Game.DiceNumber == 0)
         {
-            SetActiveDice();
+            
         }
 
         // ミッション中なら…
@@ -265,6 +283,10 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if(GameInfo.Game.MissionFlg)
         {
 
+        }
+        else
+        {
+            SetActiveDice();
         }
 
         // ターン表示テキストを設定
@@ -298,14 +320,14 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 自分がUser1
         if (GameInfo.MyTurn == Turn.User01)
         {
-            m_Pieces[0].Acquired(m_User1Square);
-            m_Pieces[1].Acquired(m_User2Square);
+            m_Pieces[0].SetLocalPosition(m_User1Square);
+            m_Pieces[1].SetLocalPosition(m_User2Square);
         }
         // 自分がUser2
         else if (GameInfo.MyTurn == Turn.User02)
         {
-            m_Pieces[0].Acquired(m_User2Square);
-            m_Pieces[1].Acquired(m_User1Square);
+            m_Pieces[0].SetLocalPosition(m_User2Square);
+            m_Pieces[1].SetLocalPosition(m_User1Square);
         }
     }
 
@@ -373,7 +395,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 送信用データを作成
         SetSendGameData(m_DiceNumber);
 
-        // ターン変更
+        // ターン変更（再起動時用に先にデータベース上のターンを変えておく）
         yield return CoChangeTurn();
 
         // ゲームデータ送信
@@ -390,6 +412,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_HUD.SetTurn(GameInfo.Game.Turn);
         m_SyncCompletedFlg = false;
 
+        // サイコロをアクティブにする
         SetActiveDice();
 
         // ゲーム終了チェック
@@ -410,14 +433,127 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 自分がUser1
         if (GameInfo.MyTurn == Turn.User01)
         {
-            // 値が50を超えないようにする
-            GameInfo.Game.User1Square = Mathf.Clamp(m_User1Square + diceNumber, 1, GameData.Width * GameData.Height);
+            // サイコロの出目を足して、移動後のマスを計算
+            // 値が50を超えないようにしつつ、移動後のマスを代入
+            int square = Mathf.Clamp(m_User1Square + diceNumber, 1, GameData.Width * GameData.Height);
+
+            // ゴールに到達してなければ蛇や梯子、ミッションマスのチェック
+            if(square < GameData.Width * GameData.Height)
+            {
+                // 蛇か梯子による移動があるかチェック
+                square = SnakeCheck(square);
+                square = LadderCheck(square);
+            }
+            
+            GameInfo.Game.User1Square = square;            
+
+            // 手数を増やす
+            ++m_User1MoveCount;
+            GameInfo.Game.User1MoveCount = m_User1MoveCount;
         }
         // 自分がUser2
         else if (GameInfo.MyTurn == Turn.User02)
         {
-            // 値が50を超えないようにする
-            GameInfo.Game.User2Square = Mathf.Clamp(m_User2Square + diceNumber, 1, GameData.Width * GameData.Height);
+            // サイコロの出目を足して、移動後のマスを計算
+            // 値が50を超えないようにしつつ、移動後のマスを代入
+            int square = Mathf.Clamp(m_User2Square + diceNumber, 1, GameData.Width * GameData.Height);
+
+            // ゴールに到達してなければ蛇や梯子、ミッションマスのチェック
+            if (square < GameData.Width * GameData.Height)
+            {
+                // 蛇か梯子による移動があるかチェック
+                square = SnakeCheck(square);
+                square = LadderCheck(square);
+            }
+
+            GameInfo.Game.User2Square = square;
+
+            // 手数を増やす
+            ++m_User2MoveCount;
+            GameInfo.Game.User2MoveCount = m_User2MoveCount;
+        }
+    }
+
+    /// <summary>
+    /// 蛇の頭に止まったかチェックし、
+    /// そうなら尻尾のマスまで移動
+    /// </summary>
+    /// <param name="squareNum">チェックしたいマス</param>
+    /// <param name="returnType">falseだと移動先のマスを返す。trueだと移動してたら0、移動してなければ-1を返す</param>
+    private int SnakeCheck(int squareNum, bool returnType = false)
+    {
+        int num = squareNum;
+
+        foreach(var snakes in m_Boards[GameInfo.Game.BoardNum].m_SneakSquares)
+        {
+            if(num == snakes.m_SneakSquare[0])
+            {
+                // 蛇の頭のマスだったので尻尾のマスまで移動                
+                if (returnType)
+                {
+                    Debug.Log("蛇の移動あり" + 0);
+                    return 0;
+                }
+                else
+                {
+                    Debug.Log("ボード : " + GameInfo.Game.BoardNum + " 蛇の頭 : " + snakes.m_SneakSquare[0] + " 蛇の尻尾 : " + snakes.m_SneakSquare[1]);
+                    num = snakes.m_SneakSquare[1];
+                    return num;
+                }
+
+                
+            }
+        }
+
+        if (returnType)
+        {
+            Debug.Log("蛇の移動なし" + -1);
+            return -1;
+        }
+        else
+        {
+            return num;
+        }
+    }
+
+    /// <summary>
+    /// 梯子の根元に止まったかチェックし、
+    /// そうなら梯子の頂上のマスまで移動
+    /// </summary>
+    /// <param name="squareNum"></param>
+    /// <param name="returnType">falseだと移動先のマスを返す。trueだと移動してたら0、移動してなければ-1を返す</param>
+    private int LadderCheck(int squareNum, bool returnType = false)
+    {
+        int num = squareNum;
+
+        foreach (var ladders in m_Boards[GameInfo.Game.BoardNum].m_LaddersSquares)
+        {
+            if (num == ladders.m_LaddersSquare[0])
+            {
+                // 梯子の根元のマスだったので梯子の頂上のマスまで移動
+                if (returnType)
+                {
+                    Debug.Log("梯子の移動あり" + 0);
+                    return 0;
+                }
+                else
+                {
+                    Debug.Log("ボード : " + GameInfo.Game.BoardNum + " 根元 : " + ladders.m_LaddersSquare[0] + " 頂上 : " + ladders.m_LaddersSquare[1]);
+                    num = ladders.m_LaddersSquare[1];
+                    return num;
+                }
+            }
+        }
+
+        if (returnType)
+        {
+            Debug.Log("梯子の移動なし" + -1);
+            return -1;
+        }
+        else
+        {
+            Debug.Log("num : " + num);
+            return num;
         }
     }
 
@@ -431,12 +567,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         m_DiceNumber = GameInfo.Game.DiceNumber;
 
-        // 相手が使用したサイコロの出目をリセット
-        GameInfo.Game.DiceNumber = 0;
-
-        // 相手にも送る
-        yield return CoSendGameData();
-
         // サイコロを振るアニメーション
         yield return m_Dice.CoDiceRollAnimation(m_DiceNumber);
 
@@ -448,6 +578,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_HUD.SetTurn(GameInfo.Game.Turn);
         m_SyncCompletedFlg = true;
 
+        // サイコロをアクティブにする
         SetActiveDice();
 
         // ゲーム終了チェック
@@ -522,7 +653,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     /// <returns></returns>
     private IEnumerator CoPieceMove()
     {
-
         // 自分のターン
         if (GameInfo.MyTurn == m_NowTurn)
         {
@@ -530,34 +660,43 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             if (GameInfo.MyTurn == Turn.User01)
             {
                 // 一手目だったとき
-                if(m_User1Square == 0)
+                if(m_User1MoveCount == 1)
                 {
-                    Debug.Log("一手目");
-                    yield return m_Pieces[0].CoFirstPieceMove(m_Dice.DiceNumber);
+                    yield return m_Pieces[0].CoFirstPieceMove(m_DiceNumber);
                 }
                 // 二手目以降
                 else
                 {
-                    yield return m_Pieces[0].CoPieceMove(m_User1Square, m_Dice.DiceNumber);
-                    
+                    yield return m_Pieces[0].CoPieceMove(m_User1Square, m_DiceNumber);
                 }
+
+                // 蛇か梯子による移動ができるか確認
+                // できるなら移動演出をさせる
+                yield return CoCheckPieceMoveSneakAndLadder(m_Pieces[0], GameInfo.Game.User1Square);
+
                 m_User1Square = GameInfo.Game.User1Square;
+                m_Pieces[0].SetLocalPosition(GameInfo.Game.User1Square);
             }
             // 自分がUser2
             else if (GameInfo.MyTurn == Turn.User02)
             {
                 // 一手目だったとき
-                if (m_User2Square == 0)
+                if (m_User2MoveCount == 1)
                 {
-                    Debug.Log("一手目");
-                    yield return m_Pieces[0].CoFirstPieceMove(m_Dice.DiceNumber);
+                    yield return m_Pieces[0].CoFirstPieceMove(m_DiceNumber);
                 }
                 // 二手目以降
                 else
                 {
-                    yield return m_Pieces[0].CoPieceMove(m_User2Square, m_Dice.DiceNumber);
+                    yield return m_Pieces[0].CoPieceMove(m_User2Square, m_DiceNumber);
                 }
+
+                // 蛇か梯子による移動ができるか確認
+                // できるなら移動演出をさせる
+                yield return CoCheckPieceMoveSneakAndLadder(m_Pieces[0], GameInfo.Game.User2Square);
+
                 m_User2Square = GameInfo.Game.User2Square;
+                m_Pieces[0].SetLocalPosition(GameInfo.Game.User2Square);
             }
         }
         // 相手のターン
@@ -567,34 +706,82 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             if (GameInfo.MyTurn == Turn.User01)
             {
                 // 一手目だったとき
-                if (m_User2Square == 0)
+                if (m_User2MoveCount == 1)
                 {
-                    Debug.Log("一手目");
-                    yield return m_Pieces[1].CoFirstPieceMove(m_Dice.DiceNumber);
+
+                    yield return m_Pieces[1].CoFirstPieceMove(m_DiceNumber);
                 }
                 // 二手目以降
                 else
                 {
-                    yield return m_Pieces[1].CoPieceMove(m_User2Square, m_Dice.DiceNumber);
+                    yield return m_Pieces[1].CoPieceMove(m_User2Square, m_DiceNumber);
                 }
+
+                // 蛇か梯子による移動ができるか確認
+                // できるなら移動演出をさせる
+                yield return CoCheckPieceMoveSneakAndLadder(m_Pieces[1], GameInfo.Game.User2Square);
+
                 m_User2Square = GameInfo.Game.User2Square;
+                m_Pieces[1].SetLocalPosition(GameInfo.Game.User2Square);
             }
             // 自分がUser2
             else if (GameInfo.MyTurn == Turn.User02)
             {
                 // 一手目だったとき
-                if (m_User1Square == 0)
+                if (m_User1MoveCount == 1)
                 {
-                    Debug.Log("一手目");
-                    yield return m_Pieces[1].CoFirstPieceMove(m_Dice.DiceNumber);
+                    yield return m_Pieces[1].CoFirstPieceMove(m_DiceNumber);
                 }
                 // 二手目以降
                 else
                 {
-                    yield return m_Pieces[1].CoPieceMove(m_User1Square, m_Dice.DiceNumber);
+                    yield return m_Pieces[1].CoPieceMove(m_User1Square, m_DiceNumber);
                 }
+
+                // 蛇か梯子による移動ができるか確認
+                // できるなら移動演出をさせる
+                yield return CoCheckPieceMoveSneakAndLadder(m_Pieces[1], GameInfo.Game.User1Square);
+
                 m_User1Square = GameInfo.Game.User1Square;
+                m_Pieces[1].SetLocalPosition(GameInfo.Game.User1Square);
             }
+        }
+    }
+
+    /// <summary>
+    /// コマが蛇か梯子による移動ができるかチェック
+    /// </summary>
+    /// <param name="piece">チェックするコマ</param>
+    /// <returns></returns>
+    private IEnumerator CoCheckPieceMoveSneakAndLadder(Piece piece, int destination)
+    {
+        // 蛇の頭から尻尾まで移動できるかチェック
+        // 移動してたら0、移動してなければ-1が入る
+        int tmp = SnakeCheck(piece.SquareNumber, true);
+        Debug.Log("piece.SquareNumber : " + piece.SquareNumber);
+
+        // 移動していたら…
+        if (tmp == 0)
+        {
+            // コマの移動演出
+            yield return m_SnakePopUp.CoSnakePopUp(piece.transform.localPosition);
+            yield return piece.CoPieceMove_SnakeSquare(destination);
+        }
+        // 移動してなかったら…
+        else
+        {
+            // 梯子の根元から頂上まで移動できるかチェック
+            tmp = LadderCheck(piece.SquareNumber, true);
+            Debug.Log("piece.SquareNumber : " + piece.SquareNumber);
+
+            // 移動していたら…
+            if (tmp == 0)
+            {
+                // コマの移動演出
+                yield return m_LadderPopUp.CoLadderPopUp(piece.transform.localPosition);
+                yield return piece.CoFirstPieceMove(destination);
+            }
+            yield break;
         }
     }
 
@@ -636,6 +823,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     /// <summary>
     /// 画面同期
     /// データベース上のデータと差異があれば画面を更新する
+    /// 自分のターンでないときだけ呼ばれる
     /// </summary>
     /// <returns></returns>
     public IEnumerator CoScreenSync(GameData gameData)
@@ -646,12 +834,31 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             // 取得したゲームデータを格納
             GameInfo.Game = gameData;
 
-            // サイコロを振れる状態のときに、
-            // 取得したゲームデータがサイコロの出目の値になっていたら…
-            if(GameInfo.Game.DiceNumber > 0 && m_Dice.DiceNumber == 0)
+            // 自分がUser1
+            if (GameInfo.MyTurn == Turn.User01)
             {
-                Debug.Log("相手がサイコロを振った");
-                yield return CoDiceRollSync();
+                // 取得した相手の手数とローカルの相手の手数が違っていたら…
+                if(GameInfo.Game.User2MoveCount != m_User2MoveCount)
+                {
+                    Debug.Log("相手がサイコロを振った");
+
+                    // 相手の手数を格納
+                    m_User2MoveCount = GameInfo.Game.User2MoveCount;
+                    yield return CoDiceRollSync();
+                }
+            }
+            // 自分がUser2
+            else if (GameInfo.MyTurn == Turn.User02)
+            {
+                // 取得した相手の手数とローカルの相手の手数が違っていたら…
+                if (GameInfo.Game.User1MoveCount != m_User1MoveCount)
+                {
+                    Debug.Log("相手がサイコロを振った");
+
+                    // 相手の手数を格納
+                    m_User1MoveCount = GameInfo.Game.User1MoveCount;
+                    yield return CoDiceRollSync();
+                }
             }
             
             yield break;

@@ -30,6 +30,12 @@ public class Piece : MonoBehaviour
     [SerializeField] private float m_MoveHorizontalTime = 0.5f;
 
     /// <summary>
+    /// 蛇の頭から尻尾へ移動するときにかける時間
+    /// </summary>
+    [Header("蛇の頭から尻尾へ移動するときにかける時間")]
+    [SerializeField] private float m_SnakeSquareMoveTime = 1.5f;
+
+    /// <summary>
     /// 今いるマス
     /// </summary>
     private int m_SquareNumber = 0;
@@ -46,12 +52,17 @@ public class Piece : MonoBehaviour
     private int m_SquareY = 0;
 
     /// <summary>
-    /// 再起動時のセットアップで呼ばれる
+    /// マスを指定して、X、Y、ローカル座標を合わせる
     /// </summary>
     /// <param name="squareNum"></param>
-    public void Acquired(int squareNum)
+    public void SetLocalPosition(int squareNum)
     {
         m_SquareNumber = squareNum;
+
+        if(squareNum == 0)
+        {
+            return;
+        }
 
         CalcSquareXY(squareNum);
 
@@ -70,19 +81,19 @@ public class Piece : MonoBehaviour
     {
         // Y軸
         m_SquareY = (GameData.Height - 1) - (squareNum - 1) / GameData.Width;
-        Debug.Log("Y軸 : " + m_SquareY);
+        Debug.Log("Y : " + m_SquareY);
 
         // Yが偶数なら...
         if (m_SquareY % 2 == 0)
         {
             m_SquareX = (GameData.Height - (squareNum % 10)) % 10;
-            Debug.Log("Yは偶数でX軸 : " + m_SquareX);
+            Debug.Log("Yは偶数 X : " + m_SquareX);
         }
         // Yが奇数なら...
         else
         {
             m_SquareX = (squareNum % 10) - 1 ;
-            Debug.Log("Yは奇数でX軸 : " + m_SquareX);
+            Debug.Log("Yは奇数 X : " + m_SquareX);
         }
 
     }
@@ -96,7 +107,7 @@ public class Piece : MonoBehaviour
     private Vector2 CalcBoardPos(int squareX, int squareY)
     {
         float posX = m_StartPos.x + m_Offset.x * squareX;
-        float posY = m_StartPos.y + m_Offset.y * (GameData.Height - m_SquareY - 1);
+        float posY = m_StartPos.y + m_Offset.y * (GameData.Height - squareY - 1);
         Vector2 newPos = new Vector2(posX, posY);
 
         return newPos;
@@ -104,13 +115,16 @@ public class Piece : MonoBehaviour
 
     /// <summary>
     /// 一手目限定のコマ移動
+    /// 梯子を移動するときにも使う
     /// </summary>
-    /// <param name="squareNum"></param>
+    /// <param name="destination">移動先のマス目</param>
     /// <returns></returns>
-    public IEnumerator CoFirstPieceMove(int squareNum)
+    public IEnumerator CoFirstPieceMove(int destination)
     {
+        m_SquareNumber = destination;
+
         // まずXYのマス目を計算
-        CalcSquareXY(squareNum);
+        CalcSquareXY(destination);
 
         yield return transform.DOLocalMove(CalcBoardPos(m_SquareX, m_SquareY), 0.5f).WaitForCompletion();
     }
@@ -130,18 +144,22 @@ public class Piece : MonoBehaviour
         {
             --movePoint;
             --m_SquareY;
-            Debug.Log("1マス上に" + movePoint);
+            
             yield return CoPieceMoveUp();
         }
 
         // これ以上進めなくなったらbreak
-        if (movePoint <= 0) yield break;
+        if (movePoint <= 0)
+        {
+            m_SquareNumber += moveSquare;
+            yield break;
+        }
 
         // 進める分だけ横方向へ移動
         // Yが偶数なら…
         if (m_SquareY % 2 == 0)
         {
-            // X左へ
+            // 左方向へ移動、Xを引く
             int tmpX = m_SquareX;
             tmpX -= movePoint;
             movePoint -= Mathf.Abs(m_SquareX - tmpX);
@@ -152,7 +170,6 @@ public class Piece : MonoBehaviour
                 movePoint = Mathf.Abs(tmpX);
                 tmpX = 0;
             }
-            Debug.Log("Y偶数なので左へ" + movePoint);
             m_SquareX = tmpX;
 
             yield return CoPieceMoveHorizontal(m_SquareX, m_SquareY);
@@ -160,28 +177,35 @@ public class Piece : MonoBehaviour
         // Yが奇数なら…
         else
         {
-            // X右へ
+            // 右方向へ移動、Xに足す
             int tmpX = m_SquareX;
             tmpX += movePoint;
             movePoint -= Mathf.Abs(m_SquareX - tmpX);
 
             // 右端を超えないようにする
-            if (GameData.Width - 1 < tmpX)
+            if ((GameData.Width - 1) < tmpX)
             {
                 movePoint = tmpX - (GameData.Width - 1);
                 tmpX = (GameData.Width - 1);
             }
-            Debug.Log("Y奇数なので右へ" + movePoint);
             m_SquareX = tmpX;
+
             yield return CoPieceMoveHorizontal(m_SquareX, m_SquareY);
         }
 
         // これ以上進めなくなったらbreak
-        if (movePoint <= 0) yield break;
+        if (movePoint <= 0)
+        {
+            m_SquareNumber += moveSquare;
+            yield break;
+        }
+
+        // 左上のマスに着いてたらbreak
+        if (m_SquareY == 0 && m_SquareX == 0) yield break;
 
         // まだmovePointが余ってたら †自分を呼ぶ†
-        Debug.Log("Point余ってるので再帰処理" + movePoint);
-        yield return CoPieceMove(squareNum, movePoint);
+        m_SquareNumber += moveSquare - movePoint;
+        yield return CoPieceMove(m_SquareNumber, movePoint);
     }
 
     /// <summary>
@@ -235,4 +259,33 @@ public class Piece : MonoBehaviour
     {
         yield return transform.DOLocalMoveX(CalcBoardPos(moveSquareX, squareY).x, m_MoveHorizontalTime).WaitForCompletion();
     }
+
+    /// <summary>
+    /// 蛇の頭から尻尾へ移動する演出
+    /// </summary>
+    /// <param name="destination">移動先のマス</param>
+    /// <returns></returns>
+    public IEnumerator CoPieceMove_SnakeSquare(int destination)
+    {
+        // 値を格納しておく
+        m_SquareNumber = destination;
+
+        // 小さくなる（蛇に吸い込まれるイメージ）
+        yield return transform.DOScale(
+            0f,
+            m_SnakeSquareMoveTime / 2f
+            ).WaitForCompletion();
+
+        // 移動先のマスに転移
+        SetLocalPosition(destination);
+
+        // 大きくなる
+        yield return transform.DOScale(
+            1f,
+            m_SnakeSquareMoveTime / 2f
+            ).SetEase(Ease.OutBounce).WaitForCompletion();
+
+    }
+
+   
 }

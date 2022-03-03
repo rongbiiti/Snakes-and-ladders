@@ -130,6 +130,25 @@ public class GameData
     }
 
     /// <summary>
+    /// User1がサイコロを振った回数
+    /// </summary>
+    [SerializeField] private int m_User1MoveCount = 0;
+    public int User1MoveCount 
+    {
+        get => m_User1MoveCount;
+        set => m_User1MoveCount = value;
+    }
+
+    /// <summary>
+    /// User2がサイコロを振った回数
+    /// </summary>
+    [SerializeField] private int m_User2MoveCount = 0;
+    public int User2MoveCount {
+        get => m_User2MoveCount;
+        set => m_User2MoveCount = value;
+    }
+
+    /// <summary>
     /// ターン
     /// </summary>
     [SerializeField] private Turn m_Turn = Turn.None;
@@ -185,6 +204,8 @@ public class GameData
         gameData.m_DiceNumber      = sendGameData.DiceNumber;
         gameData.m_User1Square     = sendGameData.User1Square;
         gameData.m_User2Square     = sendGameData.User2Square;
+        gameData.m_User1MoveCount  = sendGameData.User1MoveCount;
+        gameData.m_User2MoveCount  = sendGameData.User2MoveCount;
         gameData.m_Turn            = (Turn)sendGameData.Turn;
         gameData.m_TimeLimit       = sendGameData.TimeLimit;
 
@@ -222,6 +243,8 @@ public class GameData
             $"DiceNumber: {m_DiceNumber}\n" +
             $"User1Square: {m_User1Square}\n" +
             $"User2Square: {m_User2Square}\n" +
+            $"User1MoveCount: {m_User1MoveCount}\n" +
+            $"User2MoveCount: {m_User2MoveCount}\n" +
             $"Turn: {m_Turn}\n" +
             $"TimeLimit: {m_TimeLimit}\n";
 
@@ -317,6 +340,24 @@ public class SendGameData
     }
 
     /// <summary>
+    /// User1がサイコロを振った回数
+    /// </summary>
+    [SerializeField] private int m_User1MoveCount = 0;
+    public int User1MoveCount {
+        get => m_User1MoveCount;
+        set => m_User1MoveCount = value;
+    }
+
+    /// <summary>
+    /// User2がサイコロを振った回数
+    /// </summary>
+    [SerializeField] private int m_User2MoveCount = 0;
+    public int User2MoveCount {
+        get => m_User2MoveCount;
+        set => m_User2MoveCount = value;
+    }
+
+    /// <summary>
     /// ターン
     /// </summary>
     [SerializeField] private int m_Turn = -1;
@@ -350,6 +391,8 @@ public class SendGameData
         sendGameData.m_DiceNumber       = (int)json[0]["m_DiceNumber"].Get<long>();
         sendGameData.m_User1Square      = (int)json[0]["m_User1Square"].Get<long>();
         sendGameData.m_User2Square      = (int)json[0]["m_User2Square"].Get<long>();
+        sendGameData.m_User1MoveCount   = (int)json[0]["m_User1MoveCount"].Get<long>();
+        sendGameData.m_User2MoveCount   = (int)json[0]["m_User2MoveCount"].Get<long>();
         sendGameData.m_Turn             = (int)json[0]["m_Turn"].Get<long>();
         sendGameData.m_TimeLimit        = json[0]["m_TimeLimit"].Get<string>();
 
@@ -376,6 +419,8 @@ public class SendGameData
         sendGameData.m_DiceNumber       = gameData.DiceNumber;
         sendGameData.m_User1Square      = gameData.User1Square;
         sendGameData.m_User2Square      = gameData.User2Square;
+        sendGameData.m_User1MoveCount   = gameData.User1MoveCount;
+        sendGameData.m_User2MoveCount   = gameData.User2MoveCount;
         sendGameData.m_Turn             = (int)gameData.Turn;
         sendGameData.m_TimeLimit        = gameData.timeLimit;
 

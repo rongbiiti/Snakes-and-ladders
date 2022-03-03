@@ -26,6 +26,8 @@ public class DebugSetID : MonoBehaviour
     /// </summary>
     private void Start()
     {
+        GameInfo.MyUserID = Random.Range(1111, 10000).ToString();
+
         m_RoomIDField.text = KeyData.GameKey;
         m_UserIDField.text = GameInfo.MyUserID;
         m_OkButton.onClick.AddListener(() => OnClick_OkButton());

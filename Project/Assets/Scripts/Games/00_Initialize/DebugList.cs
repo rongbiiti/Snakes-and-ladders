@@ -40,6 +40,9 @@ public class DebugList : UWRHelper
     [SerializeField, Header("URLドロップダウンリスト")]
     private Dropdown m_URLDropDown = null;
 
+    [SerializeField, Header("サイコロの出目操作リスト")]
+    private Dropdown m_DiceNumberController = null;
+
     /// <summary>
     /// Start
     /// </summary>
@@ -52,6 +55,7 @@ public class DebugList : UWRHelper
         m_DisplayConsoleButton.onClick.AddListener(() => OnClick_DisplayConsoleButton());
         m_DisplayGameDataButton.onClick.AddListener(() => OnClick_DisplayGameDataButton());
         m_URLDropDown.onValueChanged.AddListener((int value) => OnValueChanged_URLDropDown(value));
+        m_DiceNumberController.onValueChanged.AddListener((int value) => OnValueChanged_DiceNumberController(value));
         m_URLDropDown.value = (int)GameInfo.URLType;
     }
 
@@ -158,6 +162,25 @@ public class DebugList : UWRHelper
         var type = (URLType)value;
         GameInfo.URLType = type;
         Debug.Log("環境" + GameInfo.URLType);
+    }
+
+    /// <summary>
+    /// サイコロの出目操作（不正）
+    /// </summary>
+    /// <param name="value"></param>
+    private void OnValueChanged_DiceNumberController(int value)
+    {
+        GameInfo.ControllDiceNumber = value;
+
+        if(value == 0)
+        {
+            Debug.Log("次から通常通りのダイスロール");
+        }
+        else
+        {
+            Debug.Log("次のダイスロールで " + value + " が出る");
+        }
+        
     }
 
 
