@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
 
 /// <summary>
 /// ターン
@@ -46,6 +45,27 @@ public class GameData
     {
         get => m_RoomID;
         set => m_RoomID = value;
+    }
+
+    /// <summary>
+    /// User1のPlayerType
+    /// 講師なら1、生徒なら2。初期値が0で、そのままだとエラー
+    /// </summary>
+    [SerializeField] private PlayerType m_User1PlayerType = PlayerType.None;
+    public PlayerType User1PlayerType
+    {
+        get => m_User1PlayerType;
+        set => m_User1PlayerType = value;
+    }
+
+    /// <summary>
+    /// User2のPlayerType
+    /// 講師なら1、生徒なら2。初期値が0で、そのままだとエラー
+    /// </summary>
+    [SerializeField] private PlayerType m_User2PlayerType = PlayerType.None;
+    public PlayerType User2PlayerType {
+        get => m_User2PlayerType;
+        set => m_User2PlayerType = value;
     }
 
     /// <summary>
@@ -194,20 +214,22 @@ public class GameData
         SendGameData sendGameData = SendGameData.Convert(json);
         GameData gameData = new GameData();
         
-        gameData.m_GameName        = sendGameData.GameName;
-        gameData.m_RoomID          = sendGameData.RoomID;
-        gameData.m_UserID_01       = sendGameData.UserID_01;
-        gameData.m_UserID_02       = sendGameData.UserID_02;
-        gameData.m_BoardNum        = sendGameData.BoardNum;
-        gameData.m_MissionFlg      = sendGameData.MissionFlg;
-        gameData.m_MissionNumber   = sendGameData.MissionNumber;
-        gameData.m_DiceNumber      = sendGameData.DiceNumber;
-        gameData.m_User1Square     = sendGameData.User1Square;
-        gameData.m_User2Square     = sendGameData.User2Square;
-        gameData.m_User1MoveCount  = sendGameData.User1MoveCount;
-        gameData.m_User2MoveCount  = sendGameData.User2MoveCount;
-        gameData.m_Turn            = (Turn)sendGameData.Turn;
-        gameData.m_TimeLimit       = sendGameData.TimeLimit;
+        gameData.m_GameName         = sendGameData.GameName;
+        gameData.m_RoomID           = sendGameData.RoomID;
+        gameData.m_User1PlayerType  = (PlayerType)sendGameData.User1PlayerType;
+        gameData.m_User2PlayerType  = (PlayerType)sendGameData.User2PlayerType;
+        gameData.m_UserID_01        = sendGameData.UserID_01;
+        gameData.m_UserID_02        = sendGameData.UserID_02;
+        gameData.m_BoardNum         = sendGameData.BoardNum;
+        gameData.m_MissionFlg       = sendGameData.MissionFlg;
+        gameData.m_MissionNumber    = sendGameData.MissionNumber;
+        gameData.m_DiceNumber       = sendGameData.DiceNumber;
+        gameData.m_User1Square      = sendGameData.User1Square;
+        gameData.m_User2Square      = sendGameData.User2Square;
+        gameData.m_User1MoveCount   = sendGameData.User1MoveCount;
+        gameData.m_User2MoveCount   = sendGameData.User2MoveCount;
+        gameData.m_Turn             = (Turn)sendGameData.Turn;
+        gameData.m_TimeLimit        = sendGameData.TimeLimit;
 
         return gameData;
     }
@@ -235,6 +257,8 @@ public class GameData
     {
         string str =
             $"RoomID: {m_RoomID}\n" +
+            $"User1PlayerType: {m_User1PlayerType}\n" +
+            $"User2PlayerType: {m_User2PlayerType}\n" +
             $"User1: {m_UserID_01}\n" +
             $"User2: {m_UserID_02}\n" +
             $"BoardNum: {m_BoardNum}\n" +
@@ -272,6 +296,20 @@ public class SendGameData
     /// </summary>
     [SerializeField] private string m_RoomID = string.Empty;
     public string RoomID => m_RoomID;
+
+    /// <summary>
+    /// User1のPlayerType
+    /// 講師なら1、生徒なら2。初期値が0で、そのままだとエラー
+    /// </summary>
+    [SerializeField] private int m_User1PlayerType = 0;
+    public int User1PlayerType => m_User1PlayerType;
+
+    /// <summary>
+    /// User2のPlayerType
+    /// 講師なら1、生徒なら2。初期値が0で、そのままだとエラー
+    /// </summary>
+    [SerializeField] private int m_User2PlayerType = 0;
+    public int User2PlayerType => m_User2PlayerType;
 
     /// <summary>
     /// User01
@@ -383,6 +421,8 @@ public class SendGameData
 
         sendGameData.m_GameName         = json[0]["m_GameName"].Get<string>();
         sendGameData.m_RoomID           = json[0]["m_RoomID"].Get<string>();
+        sendGameData.m_User1PlayerType  = (int)json[0]["m_User1PlayerType"].Get<long>();
+        sendGameData.m_User2PlayerType  = (int)json[0]["m_User2PlayerType"].Get<long>();
         sendGameData.m_UserID_01        = json[0]["m_UserID_01"].Get<string>();
         sendGameData.m_UserID_02        = json[0]["m_UserID_02"].Get<string>();
         sendGameData.m_BoardNum         = (int)json[0]["m_BoardNum"].Get<long>();
@@ -411,6 +451,8 @@ public class SendGameData
 
         sendGameData.m_GameName         = gameData.GameName;
         sendGameData.m_RoomID           = gameData.RoomID;
+        sendGameData.m_User1PlayerType  = (int)gameData.User1PlayerType;
+        sendGameData.m_User2PlayerType  = (int)gameData.User2PlayerType;
         sendGameData.m_UserID_01        = gameData.UserID_01;
         sendGameData.m_UserID_02        = gameData.UserID_02;
         sendGameData.m_BoardNum         = gameData.BoardNum;

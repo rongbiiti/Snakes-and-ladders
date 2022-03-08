@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb7d6545498dd21408aff72f31df53a1, type: 3}
+  m_Name: MissionContents
+  m_EditorClassIdentifier: 
+  MissionList:
+  - Be happy.
+  - Be scared.
+  - Be surprised.
+  - Be cool.
+  - Be angry.
+  - Be funny.
+  - Act like a dog.
+  - Act like a cat.
+  - Move like a robot.
+  - Touch your head.
+  - Touch your elbow.
+  - Shut your eyes.
+  - Touch your mouth.
+  - Clap your hands.
+  - Dance.
+  - Put your hands on your shoulders.
+  - Put your thumbs up.
+  - Bow.
+  - Wave goodbye.
+  - Roar like a lion.
+  - Make a sound of a cat, Meow!
+  - Make a sound of a cow, Moo!
+  - Count from 1 to 5.
+  - Tell me your name.
+  - Tell me your favorite animal.
+  - Tell me your favorite color.
+  - "What\u2019s the date today?"
+  - What color is an apple?
+  - What is your tutor's(teacher's) name?
+  - How do you say "Ohayou" in English?
+  - Give me high five!
+  - Show your right hand.
+  - Show your left hand.
+  - Show your both hands.
+  - Show me your big smile.
+  - Put your palms together.
+  - Make a heart shape with your hands.
+  - Put your hand on your forehead.
+  - What is your favorite food?
+  - What is your favorite animal?
+  - What is your favorite fruit?
+  - What is your favorite vegetable?
+  - What is your favorite drink?
+  - Where do you live?
+  - When is your birthday?
+  - How old are you?
+  - Name 3 animals.
+  - Name 3 fruits.
+  - "Read the word \u201Capple\u201D"
+  - "Read the word \u201Cumbrella\u201D"

@@ -39,6 +39,9 @@ public class RoomManager : UWRHelper
     [Header("ユーザーの名前を表示するテキスト")]
     [SerializeField] private Text m_UserNameText = null;
 
+    [Header("プレイヤータイプを表示するテキスト")]
+    [SerializeField] private Text m_PlayerTypeText = null;
+
     /// <summary>
     /// コルーチン
     /// </summary>
@@ -90,6 +93,9 @@ public class RoomManager : UWRHelper
 
         // ユーザーID取得
         yield return CoGetUserID();
+
+        // プレイヤータイプ（講師か生徒か）取得
+        yield return CoGetPlayerType();
 
         // ゲームを前回の状態から開始するか調べる
         // 前回の状態から開始しない場合はゲームデータを削除している。
@@ -157,11 +163,6 @@ public class RoomManager : UWRHelper
         {
             if (GetClieParameters.m_UserId != null)
             {
-                // ユーザーデータ取得完了
-                // 対戦相手接続待ちUI表示
-                m_GetUserDataUI.SetActive(false);
-                m_WaitingConnectUI.SetActive(true);
-
                 GameInfo.MyUserID = GetClieParameters.m_UserId;
             }
             else
@@ -175,6 +176,49 @@ public class RoomManager : UWRHelper
                 msgBox.GetComponent<MessageBox>().Initialize_Ok("Communication error", $"Failed to get user ID\nReturn to the title.", () =>
                 {
                     SceneFadeManager.I.Load(SceneName.Title);
+                    StopMatching();
+                });
+                while (true) { yield return null; }
+            }
+        }
+
+        yield break;
+    }
+
+    /// <summary>
+    /// プレイヤータイプ（講師か生徒）取得
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoGetPlayerType()
+    {
+        // ゲームが実行されている環境がWebGLの場合なら...
+        // 講師か生徒か取得
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        {
+            if (GetClieParameters.m_PlayerType != null)
+            {
+                // PlayerType取得完了
+                // 対戦相手接続待ちUI表示
+                m_GetUserDataUI.SetActive(false);
+                m_WaitingConnectUI.SetActive(true);
+
+                GameInfo.MyPlayerType = (PlayerType)Enum.Parse(typeof(PlayerType), GetClieParameters.m_PlayerType);
+
+                Debug.Log("プレイヤータイプ取得 : OK");
+            }
+            else
+            {
+                // PlayerType取得失敗UI表示
+                m_GetUserDataUI.SetActive(false);
+                m_FailedUserDataUI.SetActive(true);
+
+                Debug.Log("プレイヤータイプ取得 : エラー");
+
+                // PlayerType取得エラーメッセージ
+                GameObject msgBox = (GameObject)Instantiate((GameObject)Resources.Load("Prefabs/MessageBox"));
+                msgBox.GetComponent<MessageBox>().Initialize_Ok("Communication error", $"Failed to get Player Type\nReturn to the title.", () =>
+                {
+                    SceneFadeManager.I.Load(SceneName.GetPlayerType);
                     StopMatching();
                 });
                 while (true) { yield return null; }
@@ -278,14 +322,19 @@ public class RoomManager : UWRHelper
             gameData.UserID_01 = GameInfo.MyUserID;
             // ゲームデータを削除するタイムリミットを24時間後に設定(#72対応)
             gameData.timeLimit = DateTime.Now.AddHours(24).ToString();
-            yield return CoUpdateGameData(gameData);
+
+            // 次にプレイヤータイプの確認
+            yield return CoCheckPlayerType(gameData);
+           
         }
         else if (string.IsNullOrEmpty(gameData.UserID_02) && GameInfo.MyUserID != gameData.UserID_01)
         {
             GameInfo.MyTurn = Turn.User02;
             m_UserNameText.text = User2;
             gameData.UserID_02 = GameInfo.MyUserID;
-            yield return CoUpdateGameData(gameData);
+
+            // 次にプレイヤータイプの確認
+            yield return CoCheckPlayerType(gameData);
         }
         // 対戦相手とユーザーIDが同じならタイトルに戻る
         else
@@ -293,6 +342,47 @@ public class RoomManager : UWRHelper
             // エラー処理
             var msgBox = (GameObject)Instantiate((GameObject)Resources.Load("Prefabs/MessageBox"));
             msgBox.GetComponent<MessageBox>().Initialize_Ok("User Error", $"I'm trying to register the same user ID. \nBack to the title.", () => SceneFadeManager.I.Load(SceneName.Title));
+            while (true) { yield return null; }
+        }
+
+        
+    }
+
+    /// <summary>
+    /// プレイヤータイプの確認
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoCheckPlayerType(GameData gameData)
+    {
+        // プレイヤータイプが設定されていなかったらエラー
+        if(GameInfo.MyPlayerType == PlayerType.None)
+        {
+            // エラー処理
+            var msgBox = (GameObject)Instantiate((GameObject)Resources.Load("Prefabs/MessageBox"));
+            msgBox.GetComponent<MessageBox>().Initialize_Ok("User Error", $"Player type is not set. \nBack to the title.", () => SceneFadeManager.I.Load(SceneName.Title));
+            while (true) { yield return null; }
+        }
+
+        // User1の場合は、そのままPlayerType設定
+        if(GameInfo.MyTurn == Turn.User01)
+        {
+            gameData.User1PlayerType = GameInfo.MyPlayerType;
+            m_PlayerTypeText.text = GameInfo.MyPlayerType.ToString();
+            yield return CoUpdateGameData(gameData);
+        }
+        // User2の場合
+        // User1とプレイヤータイプが被っていないかチェック
+        else if(GameInfo.MyTurn == Turn.User02 && GameInfo.MyPlayerType != gameData.User1PlayerType)
+        {
+            gameData.User2PlayerType = GameInfo.MyPlayerType;
+            m_PlayerTypeText.text = GameInfo.MyPlayerType.ToString();
+            yield return CoUpdateGameData(gameData);
+        }
+        else
+        {
+            // エラー処理
+            var msgBox = (GameObject)Instantiate((GameObject)Resources.Load("Prefabs/MessageBox"));
+            msgBox.GetComponent<MessageBox>().Initialize_Ok("User Error", $"Same player type as opponent. \nBack to the title.", () => SceneFadeManager.I.Load(SceneName.Title));
             while (true) { yield return null; }
         }
     }

@@ -22,6 +22,11 @@ public class DebugSetID : MonoBehaviour
     [SerializeField] private InputField m_UserIDField = default;
 
     /// <summary>
+    /// PlayerType選択用
+    /// </summary>
+    [SerializeField] private Dropdown m_PlayerTypeDropdown;
+
+    /// <summary>
     /// Start
     /// </summary>
     private void Start()
@@ -30,7 +35,9 @@ public class DebugSetID : MonoBehaviour
 
         m_RoomIDField.text = KeyData.GameKey;
         m_UserIDField.text = GameInfo.MyUserID;
+        m_PlayerTypeDropdown.onValueChanged.AddListener((int value) => OnClick_PlayerType(value));
         m_OkButton.onClick.AddListener(() => OnClick_OkButton());
+        m_PlayerTypeDropdown.value = (int)GameInfo.MyPlayerType;
     }
 
     /// <summary>
@@ -40,5 +47,12 @@ public class DebugSetID : MonoBehaviour
     {
         KeyData.GameKey   = m_RoomIDField.text;
         GameInfo.MyUserID = m_UserIDField.text;
+    }
+
+    private void OnClick_PlayerType(int value)
+    {
+        GameInfo.MyPlayerType = (PlayerType)value;
+
+        Debug.Log("PlayerType : " + (PlayerType)value);
     }
 }

@@ -17,6 +17,11 @@ public class GetClieParameters : MonoBehaviour
     public static string m_GameKey = null;
 
     /// <summary>
+    /// 取得したPlayerType
+    /// </summary>
+    public static string m_PlayerType = null;
+
+    /// <summary>
     /// Start
     /// </summary>
     void Start()
@@ -61,6 +66,12 @@ public class GetClieParameters : MonoBehaviour
             {
                 m_GameKey = param[1];
                 Debug.Log("progressesId" + param[1]);
+            }
+
+            if (param[0] == "isTeacher")
+            {
+                m_PlayerType = param[1];
+                Debug.Log("isTeacher" + param[1]);
             }
         }
 

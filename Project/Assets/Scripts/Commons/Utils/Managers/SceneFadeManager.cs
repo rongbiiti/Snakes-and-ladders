@@ -34,6 +34,11 @@ public class SceneName
     /// </summary>
     public const string Game = "04_Game";
 
+    /// <summary>
+    /// 05_プレイヤータイプ取得シーン
+    /// </summary>
+    public const string GetPlayerType = "05_GetPlayerType";
+
     ///// <summary>
     ///// 99_Debugシーン名
     ///// </summary>

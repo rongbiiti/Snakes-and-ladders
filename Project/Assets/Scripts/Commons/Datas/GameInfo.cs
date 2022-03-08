@@ -25,6 +25,24 @@ public enum URLType
     StudyCompas,
 }
 
+public enum PlayerType
+{
+    /// <summary>
+    /// 初期値
+    /// </summary>
+    None,
+
+    /// <summary>
+    /// 講師
+    /// </summary>
+    Teacher,
+
+    /// <summary>
+    /// 生徒
+    /// </summary>
+    Student
+}
+
 /// <summary>
 /// ゲーム情報
 /// </summary>
@@ -44,6 +62,11 @@ public class GameInfo
     /// 自身のユーザーID
     /// </summary>
     public static string MyUserID = "0000";
+
+    /// <summary>
+    /// 講師か生徒か
+    /// </summary>
+    public static PlayerType MyPlayerType = PlayerType.None;
 
     /// <summary>
     /// 自身のターン

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using System;
 
 /// <summary>
 /// タイトル管理用クラス
@@ -104,4 +105,6 @@ public class TitleManager : UWRHelper
         }
         yield break;
     }
+
+    
 }
