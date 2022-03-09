@@ -43,6 +43,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [Header("LadderPopUp")]
     [SerializeField] private PopUpText m_LadderPopUp;
 
+    [Header("MissionContents")]
+    [SerializeField] private MissionContents m_MissionContents;
+
+    [Header("MissionBox")]
+    [SerializeField] private MissionBox m_MissionBox;
+
     [Header("ゲームデータ同期")]
     [SerializeField] private GameDataSync m_GameDataSync = null;
 
@@ -154,6 +160,8 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         m_NowTurn = GameInfo.Game.Turn;
     }
+
+    #endregion
 
     #region 通常にゲームを開始
 
@@ -267,27 +275,11 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         m_BoardImage.Image.sprite = m_Boards[GameInfo.Game.BoardNum].m_BoardTexture;
         GetPlayerSquares();
 
+        yield return CoFadeDisplayBoard();
+
         // プレイヤーの手数
         m_User1MoveCount = GameInfo.Game.User1MoveCount;
         m_User2MoveCount = GameInfo.Game.User2MoveCount;
-
-        // サイコロを振れる状態なら…
-        // サイコロを表示
-        if(GameInfo.Game.DiceNumber == 0)
-        {
-            
-        }
-
-        // ミッション中なら…
-        // ミッションを表示
-        if(GameInfo.Game.MissionFlg)
-        {
-
-        }
-        else
-        {
-            SetActiveDice();
-        }
 
         // ターン表示テキストを設定
         m_HUD.SetTurn(GameInfo.Game.Turn);
@@ -302,6 +294,28 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
         // ゲーム同期を開始する
         m_GameDataSync.StartGameSync();
+
+        // ミッション中なら…
+        // ミッションを表示
+        if (GameInfo.Game.MissionFlg)
+        {
+            yield return CoMissionDisplay();
+
+            if(GameInfo.MyTurn == GameInfo.Game.Turn)
+            {
+                // ローカルのターンを変える
+                yield return SetNewTurn(true);
+            }
+            else
+            {
+                // ローカルのターンを変える
+                yield return SetNewTurn(false);
+            }
+        }
+        else
+        {
+            SetActiveDice();
+        }
 
         // 状態をGameプレイ状態に設定
         m_GameState = GameState.Game;
@@ -330,8 +344,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             m_Pieces[1].SetLocalPosition(m_User1Square);
         }
     }
-
-    #endregion
 
     #endregion
 
@@ -407,10 +419,26 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // コマを動かす
         yield return CoPieceMove();
 
+        // ミッションフラグが立ってたら…
+        // ミッションを表示、完了するまで待機
+        if (GameInfo.Game.MissionFlg)
+        {
+            yield return CoMissionDisplay();
+        }
+
+        // ローカルのターンを変える
+        yield return SetNewTurn(false);
+    }
+
+    /// <summary>
+    /// ローカルのターンを変える
+    /// </summary>
+    private IEnumerator SetNewTurn(bool newSyncFlg)
+    {
         m_NowTurn = GameInfo.Game.Turn;
         m_Dice.DiceNumber = 0;
         m_HUD.SetTurn(GameInfo.Game.Turn);
-        m_SyncCompletedFlg = false;
+        m_SyncCompletedFlg = newSyncFlg;
 
         // サイコロをアクティブにする
         SetActiveDice();
@@ -443,6 +471,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
                 // 蛇か梯子による移動があるかチェック
                 square = SnakeCheck(square);
                 square = LadderCheck(square);
+
+                // ミッションマスに止まったかチェック
+                if (MissionCheck(square))
+                {
+                    GameInfo.Game.MissionFlg = true;
+                    GameInfo.Game.MissionNumber = Random.Range(0, m_MissionContents.MissionList.Length);
+                }
             }
             
             GameInfo.Game.User1Square = square;            
@@ -464,6 +499,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
                 // 蛇か梯子による移動があるかチェック
                 square = SnakeCheck(square);
                 square = LadderCheck(square);
+
+                // ミッションマスに止まったかチェック
+                if (MissionCheck(square))
+                {
+                    GameInfo.Game.MissionFlg = true;
+                    GameInfo.Game.MissionNumber = Random.Range(0, m_MissionContents.MissionList.Length);
+                }
             }
 
             GameInfo.Game.User2Square = square;
@@ -558,6 +600,24 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     }
 
     /// <summary>
+    /// 止まったマスがミッションマスかチェック
+    /// </summary>
+    /// <param name="squareNum">調べたいマス</param>
+    /// <returns></returns>
+    private bool MissionCheck(int squareNum)
+    {
+        foreach(var missions in m_Boards[GameInfo.Game.BoardNum].m_MissionSquares)
+        {
+            if(squareNum == missions)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// サイコロを振る（対戦相手の操作同期）
     /// </summary>
     /// <returns></returns>
@@ -573,19 +633,15 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // コマを動かす
         yield return CoPieceMove();
 
-        m_NowTurn = GameInfo.Game.Turn;
-        m_Dice.DiceNumber = 0;
-        m_HUD.SetTurn(GameInfo.Game.Turn);
-        m_SyncCompletedFlg = true;
-
-        // サイコロをアクティブにする
-        SetActiveDice();
-
-        // ゲーム終了チェック
-        if (CheckGameEnd())
+        // ミッションフラグが立ってたら…
+        // ミッションを表示、完了するまで待機
+        if (GameInfo.Game.MissionFlg)
         {
-            yield return CoResult();
+            yield return CoMissionDisplay();
         }
+
+        // ローカルのターンを変える
+        yield return SetNewTurn(true);
     }
 
     /// <summary>
@@ -786,6 +842,64 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     }
 
     /// <summary>
+    /// ミッションを表示
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator CoMissionDisplay()
+    {
+        bool isMissionComplete = false;
+
+        switch (GameInfo.MyPlayerType)
+        {
+            case PlayerType.None:
+                // PlayerType取得エラーメッセージ
+                GameObject msgBox = (GameObject)Instantiate((GameObject)Resources.Load("Prefabs/MessageBox"));
+                msgBox.GetComponent<MessageBox>().Initialize_Ok("Communication error", $"Failed to get Player Type\nReturn to the title.", () =>
+                {
+                    SceneFadeManager.I.Load(SceneName.GetPlayerType);
+                    
+                });
+                while (true) { yield return null; }
+                
+            case PlayerType.Teacher:
+                // 講師側は同期完了識別フラグを立てる
+                m_SyncCompletedFlg = true;
+
+                // ミッション内容表示、講師側はOKボタンを表示
+                yield return m_MissionBox.Initialize_Ok("MISSION", $"{m_MissionContents.MissionList[GameInfo.Game.MissionNumber]}", () =>
+                {
+                    isMissionComplete = true;
+                });
+
+                // OKボタンを押すまでループ
+                while (!isMissionComplete) { yield return null; }
+
+                // ミッション状態を解除して、データ送信
+                GameInfo.Game.MissionFlg = false;
+                GameInfo.Game.MissionNumber = -1;
+                yield return CoSendGameData();
+
+                break;
+            case PlayerType.Student:
+                // 生徒側は操作できなくなるので、同期完了識別フラグを折る
+                m_SyncCompletedFlg = false;
+
+                // ミッション内容表示、OKボタンは表示しない
+                yield return m_MissionBox.Initialize_MessageOnly("MISSION", $"{m_MissionContents.MissionList[GameInfo.Game.MissionNumber]}");
+
+                // 講師側がOKボタンを押すまで（MissionFlgが折れるまで）ループで待機
+                yield return m_GameDataSync.CoGetMissionFlg_Student();
+
+                // ミッション閉じる
+                yield return m_MissionBox.CloseWindow(0.1f);
+
+                break;
+        }
+
+        
+    }
+
+    /// <summary>
     /// ゲームが終了したか調べる
     /// </summary>
     /// <returns>TRUE: ゲーム終了 FALSE: ゲーム続行</returns>
@@ -860,6 +974,8 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
                     yield return CoDiceRollSync();
                 }
             }
+
+            
             
             yield break;
         }

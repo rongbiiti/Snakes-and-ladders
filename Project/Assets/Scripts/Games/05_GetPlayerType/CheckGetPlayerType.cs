@@ -17,7 +17,7 @@ public class CheckGetPlayerType : MonoBehaviour
             yield return CoGetPlayerType();
         }
         // タイトルシーンへ遷移
-        SceneFadeManager.I.Load(SceneName.Title, 0f);
+        SceneFadeManager.I.Load(SceneName.Title, 0.1f);
 
     }
 

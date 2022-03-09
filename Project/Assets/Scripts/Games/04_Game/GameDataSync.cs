@@ -242,6 +242,35 @@ public class GameDataSync : UWRHelper
     }
 
     /// <summary>
+    /// 生徒が講師のOKボタン押下を待機中に呼び出される
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator CoGetMissionFlg_Student()
+    {
+        while(true)
+        {
+            var uwr = CreateGetUrl(KeyData.GameKey);
+            yield return WaitForRequest(uwr);
+
+            if (CheckKey(uwr))
+            {
+                GameData gameData = GameData.FromJsonConvert(JsonNode.GetValue(uwr.downloadHandler.text));
+
+                // ミッション中フラグが折れていたら
+                // データを格納し処理を抜ける
+                if (!gameData.MissionFlg)
+                {
+                    GameInfo.Game = gameData;
+                    break;
+                }
+
+            }
+
+            yield return new WaitForSeconds(DefaultSyncSecond);
+        }
+    }
+
+    /// <summary>
     /// リザルト画面　両プレイヤー到達するまで待機する処理
     /// </summary>
     /// <returns></returns>
